@@ -31,6 +31,7 @@ func main() {
 	}
 
 	router := router.New()
+	router.HandleFunc(http.MethodGet, "/", app.addrInfoHandler)
 	router.HandleFunc(http.MethodGet, "/ip/:ip", app.meetingHandler)
 
 	srv := &http.Server{
