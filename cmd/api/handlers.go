@@ -3,16 +3,20 @@ package main
 import (
 	"errors"
 	"log"
+	"net"
 	"net/http"
+	"strings"
 
 	"github.com/br7552/router"
 )
 
-func (app *application) addrInfoHandler(w http.ResponseWriter,
+func (app *application) yourAddrInfoHandler(w http.ResponseWriter,
 	r *http.Request) {
 
-	//yourIP := r.RemoteAddr
-	yourIP := "172.58.76.209"
+	yourIP := r.RemoteAddr
+	if strings.HasPrefix(yourIP, "127.0.0.1") {
+		yourIP = ""
+	}
 
 	yourLoc, err := newLocation(yourIP)
 	if err != nil {
@@ -49,14 +53,63 @@ func (app *application) addrInfoHandler(w http.ResponseWriter,
 	}
 }
 
+func (app *application) theirAddrInfoHandler(w http.ResponseWriter,
+	r *http.Request) {
+
+	theirIP := router.Param(r, "ip")
+	if net.ParseIP(theirIP) == nil {
+		app.badRequestResponse(w, r, errors.New("invalid ip address"))
+		return
+	}
+
+	theirLoc, err := newLocation(theirIP)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	theirAddress, err := app.getAddress(theirLoc)
+	if err != nil {
+		if errors.Is(err, errAddressNotFound) {
+			theirAddress = "unknown"
+		} else {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
+	}
+
+	data := struct {
+		IP      string    `json:"ip"`
+		Coords  *location `json:"coordinates"`
+		Address string    `json:"address"`
+	}{
+		theirIP,
+		theirLoc,
+		theirAddress,
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelope{
+		"their_address_information": data,
+	}, nil)
+
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
 func (app *application) meetingHandler(w http.ResponseWriter,
 	r *http.Request) {
 
-	//yourIP := r.RemoteAddr
-	yourIP := "172.58.76.209"
+	yourIP := r.RemoteAddr
+	if strings.HasPrefix(yourIP, "127.0.0.1") {
+		yourIP = ""
+	}
+
 	theirIP := router.Param(r, "ip")
-	// validate ip
-	// if ip format invalid, return bad request response
+	if net.ParseIP(theirIP) == nil {
+		app.badRequestResponse(w, r, errors.New("invalid ip address"))
+		return
+	}
 
 	yourLoc, err := newLocation(yourIP)
 	if err != nil {
@@ -88,16 +141,6 @@ func (app *application) meetingHandler(w http.ResponseWriter,
 		}
 	}
 
-	destAddress, err := app.getAddress(dest)
-	if err != nil {
-		if errors.Is(err, errAddressNotFound) {
-			destAddress = "unknown"
-		} else {
-			app.serverErrorResponse(w, r, err)
-			return
-		}
-	}
-
 	yourAddress, err := app.getAddress(yourLoc)
 	if err != nil {
 		if errors.Is(err, errAddressNotFound) {
@@ -119,13 +162,13 @@ func (app *application) meetingHandler(w http.ResponseWriter,
 	}
 
 	data := struct {
-		MeetingLocation string      `json:"meeting_location"`
-		YourLocation    string      `json:"your_location"`
-		TheirLocation   string      `json:"their_location"`
+		MeetingLocation *location   `json:"meeting_location"`
+		YourAddress     string      `json:"your_start_address"`
+		TheirAddress    string      `json:"their_start_address"`
 		YourDirections  *directions `json:"your_directions,omitempty"`
 		TheirDirections *directions `json:"their_directions,omitempty"`
 	}{
-		destAddress,
+		dest,
 		yourAddress,
 		theirAddress,
 		yourDirections,

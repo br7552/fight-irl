@@ -11,8 +11,9 @@ func (app *application) routes() *router.Router {
 	router.MethodNotAllowed = app.methodNotAllowedResponse
 	router.NotFound = app.notFoundResponse
 
-	router.HandleFunc(http.MethodGet, "/", app.addrInfoHandler)
-	router.HandleFunc(http.MethodGet, "/ip/:ip", app.meetingHandler)
+	router.HandleFunc(http.MethodGet, "/", app.yourAddrInfoHandler)
+	router.HandleFunc(http.MethodGet, "/ip/:ip", app.theirAddrInfoHandler)
+	router.HandleFunc(http.MethodGet, "/meet/:ip", app.meetingHandler)
 
 	return router
 }
