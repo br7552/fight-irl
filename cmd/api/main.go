@@ -22,9 +22,9 @@ type application struct {
 func main() {
 	var cfg config
 
-	flag.IntVar(&cfg.port, "port", 4000, "API server port")
-	flag.StringVar(&cfg.mapsAPIkey, "mapsAPIkey", "",
-		"Google Maps API key")
+	cfg.mapsAPIkey = os.Getenv("MAPKEY")
+
+	flag.IntVar(&cfg.port, "port", 8080, "API server port")
 	flag.Parse()
 
 	logger := log.New(os.Stdout, "fight-irl-api", log.LstdFlags)
