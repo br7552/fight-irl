@@ -185,10 +185,10 @@ func (app *application) meetingHandler(w http.ResponseWriter,
 }
 
 func getIP(r *http.Request) string {
-	forwarded := r.Header.Get("X-FORWARDED-FOR")
-	if forwarded == "" {
-		return r.RemoteAddr
+	forwarded := strings.SplitN(r.Header.Get("X-FORWARDED-FOR"), ",", 2)
+	if len(forwarded) > 0 {
+		return forwarded[0]
 	}
 
-	return forwarded
+	return r.RemoteAddr
 }
