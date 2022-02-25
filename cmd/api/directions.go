@@ -2,14 +2,18 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 )
 
-var mapsURL = "https://maps.googleapis.com/maps/api/directions/json?"
-var geocodeURL = "https://maps.googleapis.com/maps/api/geocode/json?"
+var (
+	mapsURL               = "https://maps.googleapis.com/maps/api/directions/json?"
+	geocodeURL            = "https://maps.googleapis.com/maps/api/geocode/json?"
+	errAddressNotFound    = errors.New("address not found")
+	errDirectionsNotFound = errors.New("directions not found")
+)
 
 type directions struct {
 	Steps []step `json:"steps"`
@@ -55,14 +59,13 @@ func (app *application) newDirections(start, dest *location) (*directions,
 		} `json:"routes"`
 	}
 
-	/*
-		if input.Status != "OK" {
-			return nil, errors.New(input.Status)
-		}
-	*/
 	err = json.Unmarshal(body, &input)
 	if err != nil {
 		return nil, err
+	}
+
+	if input.Status != "OK" {
+		return nil, errDirectionsNotFound
 	}
 
 	var d directions
@@ -81,7 +84,7 @@ func (app *application) newDirections(start, dest *location) (*directions,
 	return &d, nil
 }
 
-func (app *application) getAddress(loc *location) string {
+func (app *application) getAddress(loc *location) (string, error) {
 	latlng := fmt.Sprintf("latlng=%f,%f",
 		loc.Latitude, loc.Longitude)
 	key := fmt.Sprintf("&key=%s", app.cfg.mapsAPIkey)
@@ -89,16 +92,17 @@ func (app *application) getAddress(loc *location) string {
 
 	resp, err := http.Get(url)
 	if err != nil {
-		return ""
+		return "", err
 	}
 
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return ""
+		return "", err
 	}
 
 	var input struct {
+		Status  string `json:"status"`
 		Results []struct {
 			Address string `json:"formatted_address"`
 		} `json:"results"`
@@ -106,9 +110,12 @@ func (app *application) getAddress(loc *location) string {
 
 	err = json.Unmarshal(body, &input)
 	if err != nil {
-		log.Println(err)
-		return ""
+		return "", err
 	}
 
-	return input.Results[0].Address
+	if input.Status != "OK" {
+		return "", errAddressNotFound
+	}
+
+	return input.Results[0].Address, nil
 }

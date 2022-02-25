@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-
-	"github.com/br7552/router"
+	"os"
+	"time"
 )
 
 type config struct {
@@ -15,7 +15,8 @@ type config struct {
 }
 
 type application struct {
-	cfg config
+	cfg    config
+	logger *log.Logger
 }
 
 func main() {
@@ -26,17 +27,19 @@ func main() {
 		"Google Maps API key")
 	flag.Parse()
 
+	logger := log.New(os.Stdout, "fight-irl-api", log.LstdFlags)
+
 	app := &application{
-		cfg: cfg,
+		cfg:    cfg,
+		logger: logger,
 	}
 
-	router := router.New()
-	router.HandleFunc(http.MethodGet, "/", app.addrInfoHandler)
-	router.HandleFunc(http.MethodGet, "/ip/:ip", app.meetingHandler)
-
 	srv := &http.Server{
-		Addr:    fmt.Sprintf(":%d", app.cfg.port),
-		Handler: router,
+		Addr:         fmt.Sprintf(":%d", app.cfg.port),
+		Handler:      app.routes(),
+		ReadTimeout:  1 * time.Second,
+		WriteTimeout: 5 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	log.Fatal(srv.ListenAndServe())
