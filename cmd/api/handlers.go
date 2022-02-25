@@ -13,7 +13,7 @@ import (
 func (app *application) yourAddrInfoHandler(w http.ResponseWriter,
 	r *http.Request) {
 
-	yourIP := r.RemoteAddr
+	yourIP := getIP(r)
 	if strings.HasPrefix(yourIP, "127.0.0.1") {
 		yourIP = ""
 	}
@@ -100,7 +100,7 @@ func (app *application) theirAddrInfoHandler(w http.ResponseWriter,
 func (app *application) meetingHandler(w http.ResponseWriter,
 	r *http.Request) {
 
-	yourIP := r.RemoteAddr
+	yourIP := getIP(r)
 	if strings.HasPrefix(yourIP, "127.0.0.1") {
 		yourIP = ""
 	}
@@ -182,4 +182,13 @@ func (app *application) meetingHandler(w http.ResponseWriter,
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
+}
+
+func getIP(r *http.Request) string {
+	forwarded := r.Header.Get("X-FORWARDED-FOR")
+	if forwarded == "" {
+		return r.RemoteAddr
+	}
+
+	return forwarded
 }
