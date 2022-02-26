@@ -64,8 +64,12 @@ func (app *application) newDirections(start, dest *location) (*directions,
 		return nil, err
 	}
 
-	if input.Status != "OK" {
+	if input.Status == "NOT_FOUND" || input.Status == "ZERO_RESULTS" {
 		return nil, errDirectionsNotFound
+	}
+
+	if input.Status != "OK" {
+		return nil, fmt.Errorf("newDirections: %s", input.Status)
 	}
 
 	var d directions
