@@ -2,8 +2,6 @@ package main
 
 import (
 	"errors"
-	"log"
-	"net"
 	"net/http"
 	"strings"
 
@@ -57,14 +55,13 @@ func (app *application) theirAddrInfoHandler(w http.ResponseWriter,
 	r *http.Request) {
 
 	theirIP := router.Param(r, "ip")
-	if net.ParseIP(theirIP) == nil {
-		app.badRequestResponse(w, r, errors.New("invalid ip address"))
-		return
-	}
-
 	theirLoc, err := newLocation(theirIP)
 	if err != nil {
-		app.serverErrorResponse(w, r, err)
+		if errors.Is(err, errInvalidIP) {
+			app.badRequestResponse(w, r, errInvalidIP)
+		} else {
+			app.serverErrorResponse(w, r, err)
+		}
 		return
 	}
 
@@ -105,21 +102,20 @@ func (app *application) meetingHandler(w http.ResponseWriter,
 		yourIP = ""
 	}
 
-	theirIP := router.Param(r, "ip")
-	if net.ParseIP(theirIP) == nil {
-		app.badRequestResponse(w, r, errors.New("invalid ip address"))
-		return
-	}
-
 	yourLoc, err := newLocation(yourIP)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
 
+	theirIP := router.Param(r, "ip")
 	theirLoc, err := newLocation(theirIP)
 	if err != nil {
-		log.Println(err)
+		if errors.Is(err, errInvalidIP) {
+			app.badRequestResponse(w, r, errInvalidIP)
+		} else {
+			app.serverErrorResponse(w, r, err)
+		}
 		return
 	}
 
