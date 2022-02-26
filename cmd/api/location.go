@@ -2,12 +2,17 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"math"
 	"net/http"
 )
 
-var ipWhoisURL = "http://ipwhois.app/json/"
+var (
+	ipWhoisURL   = "http://ipwhois.app/json/"
+	errInvalidIP = errors.New("invalid IP address")
+)
 
 type location struct {
 	Latitude  float64 `json:"latitude"`
@@ -27,10 +32,30 @@ func newLocation(ip string) (*location, error) {
 		return nil, err
 	}
 
-	var loc location
-	err = json.Unmarshal(body, &loc)
+	var input struct {
+		Success   bool    `json:"success"`
+		Message   string  `json:"message"`
+		Latitude  float64 `json:"latitude"`
+		Longitude float64 `json:"longitude"`
+	}
+
+	err = json.Unmarshal(body, &input)
 	if err != nil {
 		return nil, err
+	}
+
+	if !input.Success {
+		if input.Message == "invalid IP address" ||
+			input.Message == "reserved range" {
+			return nil, errInvalidIP
+		}
+
+		return nil, fmt.Errorf("location: %s", input.Message)
+	}
+
+	loc := location{
+		Latitude:  input.Latitude,
+		Longitude: input.Longitude,
 	}
 
 	return &loc, nil
