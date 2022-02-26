@@ -20,8 +20,8 @@ type directions struct {
 }
 
 type step struct {
-	Text     string `json:"text"`
-	Distance string `json:"distance"`
+	HTMLinstructions string `json:"html_instructions"`
+	Distance         string `json:"distance"`
 }
 
 func (app *application) newDirections(start, dest *location) (*directions,
@@ -46,8 +46,9 @@ func (app *application) newDirections(start, dest *location) (*directions,
 	}
 
 	var input struct {
-		Status string `json:"status"`
-		Routes []struct {
+		Status       string `json:"status"`
+		ErrorMessage string `json:"error_message"`
+		Routes       []struct {
 			Legs []struct {
 				Steps []struct {
 					Instructions string `json:"html_instructions"`
@@ -69,7 +70,7 @@ func (app *application) newDirections(start, dest *location) (*directions,
 	}
 
 	if input.Status != "OK" {
-		return nil, fmt.Errorf("newDirections: %s", input.Status)
+		return nil, fmt.Errorf("newDirections: %s", input.ErrorMessage)
 	}
 
 	var d directions
@@ -78,8 +79,8 @@ func (app *application) newDirections(start, dest *location) (*directions,
 	for _, v := range legs {
 		for _, u := range v.Steps {
 			t := step{
-				Text:     u.Instructions,
-				Distance: u.Distance.Text,
+				HTMLinstructions: u.Instructions,
+				Distance:         u.Distance.Text,
 			}
 			d.Steps = append(d.Steps, t)
 		}

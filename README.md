@@ -52,16 +52,16 @@ from both places to this location:
     "your_directions": {
       "steps": [
         {
-          "text": string,
+          "html_instructions": string,
           "distance": string"
         },
         {
-          "text": string,
+          "html_instructions": string,
           "distance": string"
         },
         ...
         {
-          "text": string,
+          "html_instructions": string,
           "distance": string
         }
       ]
@@ -69,7 +69,7 @@ from both places to this location:
     "their_directions": {
       "steps": [
         {
-          "text": string,
+          "html_instructions": string,
           "distance": string"
         },
         ...
