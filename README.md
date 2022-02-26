@@ -78,6 +78,7 @@ from both places to this location:
   }
 }
 ```
+note: directions may not be included if no route can be found
 
 ### Error Responses
 Any of the above endpoints may return the following:
