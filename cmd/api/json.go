@@ -2,27 +2,29 @@ package main
 
 import (
 	"encoding/json"
-	"net/http"
+
+	"github.com/aws/aws-lambda-go/events"
 )
 
 type envelope map[string]interface{}
 
-func (app *application) writeJSON(w http.ResponseWriter, status int,
-	data envelope, headers http.Header) error {
+func writeJSON(status int,
+	data envelope) (events.APIGatewayProxyResponse, error) {
+
 	js, err := json.Marshal(data)
 	if err != nil {
-		return err
+		return events.APIGatewayProxyResponse{}, err
 	}
 
 	js = append(js, '\n')
 
-	for k, v := range headers {
-		w.Header()[k] = v
+	headers := map[string]string{
+		"Content-Type": "application/json",
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	w.Write(js)
-
-	return nil
+	return events.APIGatewayProxyResponse{
+		StatusCode: status,
+		Headers:    headers,
+		Body:       string(js),
+	}, nil
 }

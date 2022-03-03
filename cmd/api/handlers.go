@@ -1,15 +1,17 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strings"
 
-	"github.com/br7552/router"
+	"github.com/aws/aws-lambda-go/events"
 )
 
-func (app *application) yourAddrInfoHandler(w http.ResponseWriter,
-	r *http.Request) {
+func (app *application) meetingHandler(ctx context.Context,
+	r events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse,
+	error) {
 
 	yourIP := getIP(r)
 	if strings.HasPrefix(yourIP, "127.0.0.1") {
@@ -18,105 +20,17 @@ func (app *application) yourAddrInfoHandler(w http.ResponseWriter,
 
 	yourLoc, err := newLocation(yourIP)
 	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
+		return serverErrorResponse(err)
 	}
 
-	yourAddress, err := app.getAddress(yourLoc)
-	if err != nil {
-		if errors.Is(err, errAddressNotFound) {
-			yourAddress = "unknown"
-		} else {
-			app.serverErrorResponse(w, r, err)
-			return
-		}
-	}
-
-	data := struct {
-		IP      string    `json:"ip"`
-		Coords  *location `json:"coordinates"`
-		Address string    `json:"address"`
-	}{
-		yourIP,
-		yourLoc,
-		yourAddress,
-	}
-
-	err = app.writeJSON(w, http.StatusOK, envelope{
-		"your_address_information": data,
-	}, nil)
-
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-	}
-}
-
-func (app *application) theirAddrInfoHandler(w http.ResponseWriter,
-	r *http.Request) {
-
-	theirIP := router.Param(r, "ip")
+	theirIP := r.PathParameters["ip"]
 	theirLoc, err := newLocation(theirIP)
 	if err != nil {
 		if errors.Is(err, errInvalidIP) {
-			app.badRequestResponse(w, r, errInvalidIP)
+			return badRequestResponse(errInvalidIP)
 		} else {
-			app.serverErrorResponse(w, r, err)
+			return serverErrorResponse(err)
 		}
-		return
-	}
-
-	theirAddress, err := app.getAddress(theirLoc)
-	if err != nil {
-		if errors.Is(err, errAddressNotFound) {
-			theirAddress = "unknown"
-		} else {
-			app.serverErrorResponse(w, r, err)
-			return
-		}
-	}
-
-	data := struct {
-		IP      string    `json:"ip"`
-		Coords  *location `json:"coordinates"`
-		Address string    `json:"address"`
-	}{
-		theirIP,
-		theirLoc,
-		theirAddress,
-	}
-
-	err = app.writeJSON(w, http.StatusOK, envelope{
-		"their_address_information": data,
-	}, nil)
-
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-	}
-}
-
-func (app *application) meetingHandler(w http.ResponseWriter,
-	r *http.Request) {
-
-	yourIP := getIP(r)
-	if strings.HasPrefix(yourIP, "127.0.0.1") {
-		yourIP = ""
-	}
-
-	yourLoc, err := newLocation(yourIP)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
-	}
-
-	theirIP := router.Param(r, "ip")
-	theirLoc, err := newLocation(theirIP)
-	if err != nil {
-		if errors.Is(err, errInvalidIP) {
-			app.badRequestResponse(w, r, errInvalidIP)
-		} else {
-			app.serverErrorResponse(w, r, err)
-		}
-		return
 	}
 
 	dest := midpoint(yourLoc, theirLoc)
@@ -124,16 +38,14 @@ func (app *application) meetingHandler(w http.ResponseWriter,
 	yourDirections, err := app.newDirections(yourLoc, dest)
 	if err != nil {
 		if !errors.Is(err, errDirectionsNotFound) {
-			app.serverErrorResponse(w, r, err)
-			return
+			return serverErrorResponse(err)
 		}
 	}
 
 	theirDirections, err := app.newDirections(theirLoc, dest)
 	if err != nil {
 		if !errors.Is(err, errDirectionsNotFound) {
-			app.serverErrorResponse(w, r, err)
-			return
+			return serverErrorResponse(err)
 		}
 	}
 
@@ -142,8 +54,7 @@ func (app *application) meetingHandler(w http.ResponseWriter,
 		if errors.Is(err, errAddressNotFound) {
 			yourAddress = "unknown"
 		} else {
-			app.serverErrorResponse(w, r, err)
-			return
+			return serverErrorResponse(err)
 		}
 	}
 
@@ -152,8 +63,7 @@ func (app *application) meetingHandler(w http.ResponseWriter,
 		if errors.Is(err, errAddressNotFound) {
 			theirAddress = "unknown"
 		} else {
-			app.serverErrorResponse(w, r, err)
-			return
+			return serverErrorResponse(err)
 		}
 	}
 
@@ -171,20 +81,16 @@ func (app *application) meetingHandler(w http.ResponseWriter,
 		theirDirections,
 	}
 
-	err = app.writeJSON(w, http.StatusOK, envelope{
+	return writeJSON(http.StatusOK, envelope{
 		"meeting": data,
-	}, nil)
-
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-	}
+	})
 }
 
-func getIP(r *http.Request) string {
-	forwarded := strings.SplitN(r.Header.Get("X-FORWARDED-FOR"), ",", 2)
+func getIP(r events.APIGatewayProxyRequest) string {
+	forwarded := strings.SplitN(r.Headers["X-Forwarded-For"], ",", 2)
 	if len(forwarded) > 0 {
 		return forwarded[0]
 	}
 
-	return r.RemoteAddr
+	return r.RequestContext.Identity.SourceIP
 }
