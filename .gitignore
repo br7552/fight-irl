@@ -1,3 +1,6 @@
+# Archive files
+*.zip
+
 # Terraform stuff
 .terraform*
 *.tfstate
