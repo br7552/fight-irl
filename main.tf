@@ -90,7 +90,7 @@ resource "aws_apigatewayv2_integration" "fight-irl" {
 
 resource "aws_apigatewayv2_route" "fight-irl" {
   api_id    = aws_apigatewayv2_api.lambda.id
-  route_key = "GET /"
+  route_key = "GET /{ip}"
   target    = "integrations/${aws_apigatewayv2_integration.fight-irl.id}"
 }
 
